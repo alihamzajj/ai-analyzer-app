@@ -34,11 +34,11 @@ class _ChatSetupScreenState extends State<ChatSetupScreen> {
     _relationshipType = widget.parseResult.metadata.isGroupChat ? 'group' : 'crush';
     _adjustRoastForRelationship();
 
-    // Pakistani chats are usually typed in Roman Urdu; answer in the same style.
+    // Roman Urdu chats are fully understood, but results stay in English by
+    // default; the user can still pick Roman Urdu from the dropdown.
     _detectedRomanUrdu = RomanUrdu.isMostlyRomanUrdu(
       widget.parseResult.messages.map((m) => m.content),
     );
-    if (_detectedRomanUrdu) _outputLanguage = RomanUrdu.languageCode;
   }
 
   void _adjustRoastForRelationship() {
@@ -159,7 +159,7 @@ class _ChatSetupScreenState extends State<ChatSetupScreen> {
                     if (_detectedRomanUrdu) ...[
                       const SizedBox(height: 6),
                       Text(
-                        'Roman Urdu chat detected, so results will be in Roman Urdu. You can change this.',
+                        'Roman Urdu chat detected. We understand it fully, results will be in English.',
                         style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
                       ),
                     ],
