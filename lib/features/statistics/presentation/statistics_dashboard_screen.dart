@@ -233,8 +233,10 @@ class _StatisticsDashboardScreenState extends State<StatisticsDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('24-Hour Activity Heatmap', style: AppTypography.titleMedium),
-              const Text('Peak hours', style: AppTypography.bodySmall),
+              const Expanded(
+                child: Text('24-Hour Activity', style: AppTypography.titleMedium),
+              ),
+              const Text('PEAK HOURS', style: AppTypography.labelSmall),
             ],
           ),
           const SizedBox(height: 24),
@@ -336,7 +338,8 @@ class _StatisticsDashboardScreenState extends State<StatisticsDashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTypography.bodyMedium),
+          Expanded(child: Text(label, style: AppTypography.bodyMedium)),
+          const SizedBox(width: 8),
           Row(
             children: [
               Text(val1, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryLight)),
