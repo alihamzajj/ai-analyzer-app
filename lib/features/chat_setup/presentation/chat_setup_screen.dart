@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_typography.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/roman_urdu.dart';
 import '../../chat_parser/models/parse_result.dart';
 import '../models/chat_setup_config.dart';
 import '../../statistics/services/statistics_engine.dart';
@@ -20,6 +21,7 @@ class _ChatSetupScreenState extends State<ChatSetupScreen> {
   late String _selectedUser;
   late String _relationshipType;
   String _outputLanguage = 'en';
+  bool _detectedRomanUrdu = false;
   String _roastIntensity = 'spicy';
   bool _enableRoast = true;
   bool _isCalculating = false;
@@ -31,6 +33,12 @@ class _ChatSetupScreenState extends State<ChatSetupScreen> {
     _selectedUser = participants.isNotEmpty ? participants.first : 'User';
     _relationshipType = widget.parseResult.metadata.isGroupChat ? 'group' : 'crush';
     _adjustRoastForRelationship();
+
+    // Pakistani chats are usually typed in Roman Urdu; answer in the same style.
+    _detectedRomanUrdu = RomanUrdu.isMostlyRomanUrdu(
+      widget.parseResult.messages.map((m) => m.content),
+    );
+    if (_detectedRomanUrdu) _outputLanguage = RomanUrdu.languageCode;
   }
 
   void _adjustRoastForRelationship() {
@@ -148,6 +156,13 @@ class _ChatSetupScreenState extends State<ChatSetupScreen> {
 
                     // Question 3: Output language
                     const Text('Output Language', style: AppTypography.titleMedium),
+                    if (_detectedRomanUrdu) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Roman Urdu chat detected, so results will be in Roman Urdu. You can change this.',
+                        style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),

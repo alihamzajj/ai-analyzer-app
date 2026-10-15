@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../../core/utils/roman_urdu.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../chat_parser/models/parsed_message.dart';
 import '../../chat_setup/models/chat_setup_config.dart';
@@ -204,6 +205,10 @@ class AiPipelineService {
     required DigestPayload digestPayload,
     required ChatStatistics statistics,
   }) {
+    // Demo text follows the chosen output language (English or Roman Urdu).
+    final romanUrdu = config.outputLanguage == RomanUrdu.languageCode;
+    String t(String en, String ur) => romanUrdu ? ur : en;
+
     final sampleIds = digestPayload.compactMessages.take(4).map((m) => m['id'] as String).toList();
     final id1 = sampleIds.isNotEmpty ? sampleIds[0] : '';
     final id2 = sampleIds.length > 1 ? sampleIds[1] : id1;
@@ -212,77 +217,77 @@ class AiPipelineService {
     final cards = [
       {
         'type': 'interest_meter',
-        'title': 'Interest & Spark Meter',
-        'subtitle': '86% Mutual Resonance',
-        'summary': 'User A and their chat partner demonstrate highly synchronized texting rhythms and prompt responsiveness across sessions.',
+        'title': t('Interest & Spark Meter', 'Interest Meter'),
+        'subtitle': t('86% Mutual Resonance', 'Dono taraf se 86% vibe'),
+        'summary': t('User A and their chat partner demonstrate highly synchronized texting rhythms and prompt responsiveness across sessions.', 'Dono ka texting ka rhythm bilkul match karta hai, aur reply bhi jaldi aate hain. Yeh chat clearly dono ke liye important hai.'),
         'score': 86,
         'confidence': 'high',
         'message_ids': [id1, id2].where((id) => id.isNotEmpty).toList(),
       },
       {
         'type': 'situationship_status',
-        'title': 'Situationship Status',
-        'subtitle': 'Unspoken Chemistry',
-        'summary': 'Consistently high engagement with minimal emotional hesitation. Both show balanced investment in continuing conversations.',
+        'title': t('Situationship Status', 'Situationship Status'),
+        'subtitle': t('Unspoken Chemistry', 'Kuch toh hai jo bola nahi gaya'),
+        'summary': t('Consistently high engagement with minimal emotional hesitation. Both show balanced investment in continuing conversations.', 'Baat cheet mein dono barabar interest dikhate hain. Koi jhijhak nahi, aur dono chahte hain ke baat chalti rahe.'),
         'score': 88,
         'confidence': 'high',
         'message_ids': [id1].where((id) => id.isNotEmpty).toList(),
       },
       {
         'type': 'simp_score',
-        'title': 'Simp Score',
-        'subtitle': 'Balanced Energy',
-        'summary': 'Neither party overwhelmingly simps, maintaining an admirable equilibrium between intrigue and independence.',
+        'title': t('Simp Score', 'Simp Score'),
+        'subtitle': t('Balanced Energy', 'Energy barabar hai'),
+        'summary': t('Neither party overwhelmingly simps, maintaining an admirable equilibrium between intrigue and independence.', 'Koi bhi hadd se zyada simp nahi kar raha. Interest bhi hai aur apni izzat bhi, perfect balance.'),
         'score': 42,
         'confidence': 'medium',
         'message_ids': [id2].where((id) => id.isNotEmpty).toList(),
       },
       {
         'type': 'compatibility_score',
-        'title': 'Compatibility Score',
-        'subtitle': '91% Alignment',
-        'summary': 'Strong conversational reciprocity, matching reply velocity, and aligned reaction times signify outstanding interpersonal compatibility.',
+        'title': t('Compatibility Score', 'Compatibility Score'),
+        'subtitle': t('91% Alignment', '91% match'),
+        'summary': t('Strong conversational reciprocity, matching reply velocity, and aligned reaction times signify outstanding interpersonal compatibility.', 'Jitna ek deta hai utna doosra lautata hai. Reply speed aur mood dono match karte hain, solid jodi hai.'),
         'score': 91,
         'confidence': 'high',
         'message_ids': [id1, id3].where((id) => id.isNotEmpty).toList(),
       },
       {
         'type': 'green_flags',
-        'title': 'Green Flags',
-        'subtitle': 'Emotional Availability',
-        'summary': 'Active check-ins, genuine curiosity about each other’s days, and respectful acknowledgment of delayed messages.',
+        'title': t('Green Flags', 'Green Flags'),
+        'subtitle': t('Emotional Availability', 'Khayal rakhne wale'),
+        'summary': t('Active check-ins, genuine curiosity about each other’s days, and respectful acknowledgment of delayed messages.', '"Pohanch k batana", "khana khaya?" jaise check-ins, ek doosre ke din mein sach mein interest, aur late reply pe bhi izzat se baat.'),
         'confidence': 'high',
         'message_ids': [id1, id2].where((id) => id.isNotEmpty).toList(),
       },
       {
         'type': 'red_flags',
-        'title': 'Red Flags',
-        'subtitle': 'Low friction detected',
-        'summary': 'Occasional multi-hour silence periods during work hours, but quickly followed by warm reconnects.',
+        'title': t('Red Flags', 'Red Flags'),
+        'subtitle': t('Low friction detected', 'Zyada masla nahi'),
+        'summary': t('Occasional multi-hour silence periods during work hours, but quickly followed by warm reconnects.', 'Kaam ke time kabhi kabhi ghanton ki khamoshi, lekin phir jaldi hi pyar se baat shuru ho jati hai.'),
         'confidence': 'low',
         'message_ids': [id3].where((id) => id.isNotEmpty).toList(),
       },
       {
         'type': 'double_text_champion',
-        'title': 'Double-Text Champion',
-        'subtitle': 'Spontaneous Thought Express',
-        'summary': 'Double texting here is enthusiastic rather than needy—sending quick contextual follow-ups and memes.',
+        'title': t('Double-Text Champion', 'Double-Text Champion'),
+        'subtitle': t('Spontaneous Thought Express', 'Dimagh mein aya, bhej diya'),
+        'summary': t('Double texting here is enthusiastic rather than needy—sending quick contextual follow-ups and memes.', 'Yahan double text desperation nahi, excitement hai. Foran follow-up aur memes bhejna inki aadat hai.'),
         'confidence': 'high',
         'message_ids': [id2].where((id) => id.isNotEmpty).toList(),
       },
       {
         'type': 'texting_personality',
-        'title': 'Texting Archetype',
-        'subtitle': 'The Instant Banterer',
-        'summary': 'Fast-paced, responsive, witty remarks, and lively emoji usage characterize this conversation.',
+        'title': t('Texting Archetype', 'Texting Personality'),
+        'subtitle': t('The Instant Banterer', 'Hazir-jawab'),
+        'summary': t('Fast-paced, responsive, witty remarks, and lively emoji usage characterize this conversation.', 'Tez replies, mazedaar jumlay aur emojis ki barsaat. Is chat mein boredom ka koi chance nahi.'),
         'confidence': 'high',
         'message_ids': [id1].where((id) => id.isNotEmpty).toList(),
       },
       {
         'type': 'chat_wrapped',
-        'title': 'Chat Wrapped Highlights',
-        'subtitle': 'Memories & Milestones',
-        'summary': 'A dynamic filled with laughter, inside jokes, and late night discussions.',
+        'title': t('Chat Wrapped Highlights', 'Chat Wrapped'),
+        'subtitle': t('Memories & Milestones', 'Yaadein aur lamhe'),
+        'summary': t('A dynamic filled with laughter, inside jokes, and late night discussions.', 'Hansi, inside jokes aur raat der tak lambi baatein. Yeh chat dosti ki diary hai.'),
         'confidence': 'high',
         'message_ids': [id1, id3].where((id) => id.isNotEmpty).toList(),
       },
@@ -292,8 +297,8 @@ class AiPipelineService {
       cards.add({
         'type': 'roast_mode',
         'title': 'Roast Mode (${config.roastIntensity.toUpperCase()})',
-        'subtitle': 'The Notification Overloader',
-        'summary': 'You two treat WhatsApp like an ongoing walkie-talkie channel. Typing three fragments instead of one complete sentence is a lifestyle choice at this point!',
+        'subtitle': t('The Notification Overloader', 'Notification ka toofan'),
+        'summary': t('You two treat WhatsApp like an ongoing walkie-talkie channel. Typing three fragments instead of one complete sentence is a lifestyle choice at this point!', 'Aap dono WhatsApp ko walkie-talkie samajhte ho. Ek line ki jagah teen tukde bhejna ab lifestyle ban chuka hai 😭'),
         'score': 75,
         'confidence': 'high',
         'message_ids': [id2].where((id) => id.isNotEmpty).toList(),
@@ -305,9 +310,9 @@ class AiPipelineService {
       'cards': cards,
       'teaser_insight': {
         'type': 'interest_meter',
-        'title': 'Interest Meter Sneak Peek',
-        'subtitle': '86% Mutual Resonance',
-        'summary': 'High conversational chemistry detected! Both participants show strong mutual engagement.',
+        'title': t('Interest Meter Sneak Peek', 'Interest Meter ki jhalak'),
+        'subtitle': t('86% Mutual Resonance', 'Dono taraf se 86% vibe'),
+        'summary': t('High conversational chemistry detected! Both participants show strong mutual engagement.', 'Zabardast chemistry! Dono taraf se baat karne ka shauq saaf nazar aata hai.'),
         'score': 86,
         'confidence': 'high',
         'message_ids': [id1].where((id) => id.isNotEmpty).toList(),

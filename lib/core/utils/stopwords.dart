@@ -1,3 +1,5 @@
+import 'roman_urdu.dart';
+
 /// Multilingual stopword lists to filter out common conversational filler words
 /// when extracting top meaningful words from conversations.
 class Stopwords {
@@ -51,6 +53,7 @@ class Stopwords {
     ...spanish,
     ...french,
     ...german,
+    ...RomanUrdu.commonWords,
   };
 
   /// Returns true if the lowercase word is considered a stopword.

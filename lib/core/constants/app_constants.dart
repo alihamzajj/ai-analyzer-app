@@ -47,6 +47,8 @@ class AppConstants {
   // Supported Output Languages
   static const List<Map<String, String>> supportedLanguages = [
     {'code': 'en', 'name': 'English'},
+    {'code': 'ur-Latn', 'name': 'Roman Urdu (acha, theek hai)'},
+    {'code': 'ur', 'name': 'Urdu (اردو)'},
     {'code': 'es', 'name': 'Spanish (Español)'},
     {'code': 'fr', 'name': 'French (Français)'},
     {'code': 'de', 'name': 'German (Deutsch)'},

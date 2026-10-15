@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../../chat_parser/models/parsed_message.dart';
 import '../models/chat_statistics.dart';
+import '../../../core/utils/roman_urdu.dart';
 import '../../../core/utils/stopwords.dart';
 
 /// High-performance calculation engine for chat metrics.
@@ -16,6 +17,7 @@ class StatisticsEngine {
 
   static final List<String> _laughMarkers = [
     'haha', 'hehe', 'lol', 'lmao', 'rofl', 'jaja', 'mdr', '😂', '🤣', 'xd', 'hah',
+    ...RomanUrdu.laughMarkers,
   ];
 
   static const List<String> _trackedKeywords = [
@@ -26,6 +28,17 @@ class StatisticsEngine {
     'goodnight',
     'good morning',
   ];
+
+  /// Word-boundary matchers per keyword bucket: the English keyword plus its
+  /// Roman Urdu synonyms (e.g. "thanks" also matches "shukriya").
+  static final Map<String, RegExp> _keywordMatchers = {
+    for (final k in _trackedKeywords)
+      k: RegExp(
+        r'\b(' +
+            [k, ...?RomanUrdu.keywordSynonyms[k]].map(RegExp.escape).join('|') +
+            r')\b',
+      ),
+  };
 
   /// Runs statistics calculation in a background isolate using Flutter `compute`.
   static Future<ChatStatistics> calculateAsync(List<ParsedMessage> messages) async {
@@ -149,7 +162,9 @@ class StatisticsEngine {
 
       // 3. Questions & Laughter
       final lowerText = text.toLowerCase();
-      if (lowerText.contains('?') || lowerText.contains('¿')) {
+      if (lowerText.contains('?') ||
+          lowerText.contains('¿') ||
+          RomanUrdu.questionPattern.hasMatch(lowerText)) {
         questionCounts[sender] = questionCounts[sender]! + 1;
       }
 
@@ -162,7 +177,7 @@ class StatisticsEngine {
 
       // 4. Keyword counters
       for (final keyword in _trackedKeywords) {
-        if (lowerText.contains(keyword)) {
+        if (_keywordMatchers[keyword]!.hasMatch(lowerText)) {
           keywordCounts[sender]![keyword] = keywordCounts[sender]![keyword]! + 1;
         }
       }
