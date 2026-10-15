@@ -8,6 +8,8 @@ import { buildSystemPrompt, buildUserPrompt } from "../_shared/prompts.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const AI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("OPENAI_API_KEY") || "";
+// Optional override, e.g. `supabase secrets set GEMINI_MODEL=gemini-2.5-flash`.
+const GEMINI_MODEL_OVERRIDE = Deno.env.get("GEMINI_MODEL") ?? "";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -69,7 +71,8 @@ serve(async (req) => {
 
     const activeModel = modelConfigs && modelConfigs.length > 0
       ? modelConfigs[0]
-      : { provider: "gemini", model_id: "gemini-1.5-flash", input_cost_per_m: 0.075, output_cost_per_m: 0.30 };
+      : { provider: "gemini", model_id: "gemini-flash-latest", input_cost_per_m: 0.075, output_cost_per_m: 0.30 };
+    if (GEMINI_MODEL_OVERRIDE) activeModel.model_id = GEMINI_MODEL_OVERRIDE;
 
     // 5. Build prompts
     const systemPrompt = buildSystemPrompt(body);
@@ -95,10 +98,19 @@ serve(async (req) => {
           generationConfig: {
             responseMimeType: "application/json",
             temperature: 0.7,
-            maxOutputTokens: 2500,
+            // Room for 6-10 cards plus the model's internal reasoning tokens.
+            maxOutputTokens: 8192,
           },
         }),
       });
+
+      if (aiResponse.status === 429) {
+        // Free-tier quota or burst limit reached: let the app show "try again later".
+        return new Response(
+          JSON.stringify({ error: "AI_BUSY", message: "The AI is busy right now. Please try again shortly." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       if (!aiResponse.ok) {
         const errText = await aiResponse.text();

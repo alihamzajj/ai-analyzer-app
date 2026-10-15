@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../../../core/config/backend_config.dart';
+import '../../../core/utils/anonymous_id.dart';
 import '../../../core/utils/roman_urdu.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../chat_parser/models/parsed_message.dart';
@@ -24,6 +26,22 @@ class AiPipelineService {
     this.supabaseClient,
     this.customBackendUrl,
   });
+
+  /// Uses the live Supabase backend when configured, otherwise the offline demo.
+  factory AiPipelineService.fromConfig() {
+    SupabaseClient? client;
+    if (BackendConfig.isConfigured) {
+      try {
+        client = Supabase.instance.client;
+      } catch (_) {
+        client = null; // Supabase failed to initialise at startup
+      }
+    }
+    return AiPipelineService(supabaseClient: client);
+  }
+
+  /// True when reports come from real AI rather than the offline demo.
+  bool get isLive => supabaseClient != null || (customBackendUrl?.isNotEmpty ?? false);
 
   /// Executes the full multi-stage AI analysis pipeline with live honest progress reporting.
   Future<AnalysisReport> generateReport({
@@ -79,6 +97,7 @@ class AiPipelineService {
         final res = await supabaseClient!.functions.invoke(
           AppConstants.functionAnalyseChat,
           body: requestBody,
+          headers: {'x-anonymous-user-id': await AnonymousId.get()},
         );
         if (res.status != 200) {
           throw AiServiceException(
@@ -193,10 +212,27 @@ class AiPipelineService {
       );
 
       return report;
+    } on FunctionException catch (e) {
+      throw AiServiceException(
+        _friendlyBackendError(e.status),
+        code: 'BACKEND_STATUS_${e.status}',
+        details: e.details,
+        isRetryable: e.status != 429,
+      );
     } catch (e) {
       if (e is AppException) rethrow;
       throw AiServiceException('Failed to generate report: $e', details: e);
     }
+  }
+
+  static String _friendlyBackendError(int status) {
+    if (status == 429) {
+      return 'AI is busy or you reached the fair-use limit. Please try again in a little while.';
+    }
+    if (status >= 500) {
+      return 'Our AI server had a hiccup. Please try again in a minute.';
+    }
+    return 'Could not reach the AI service (error $status). Check your internet and try again.';
   }
 
   /// Generates a valid local fallback report for instant offline capability or development

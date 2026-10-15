@@ -26,7 +26,7 @@ class AiGenerationScreen extends StatefulWidget {
 }
 
 class _AiGenerationScreenState extends State<AiGenerationScreen> {
-  final AiPipelineService _pipelineService = AiPipelineService();
+  final AiPipelineService _pipelineService = AiPipelineService.fromConfig();
 
   String _currentStage = 'Initializing AI analysis...';
   double _progressValue = 0.05;

@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS public.model_config (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider TEXT NOT NULL DEFAULT 'gemini',
-    model_id TEXT NOT NULL DEFAULT 'gemini-1.5-flash',
+    model_id TEXT NOT NULL DEFAULT 'gemini-flash-latest',
     is_active BOOLEAN NOT NULL DEFAULT true,
     input_cost_per_m NUMERIC(10, 4) NOT NULL DEFAULT 0.075,
     output_cost_per_m NUMERIC(10, 4) NOT NULL DEFAULT 0.30,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.model_config (
 
 -- Seed default active model configuration
 INSERT INTO public.model_config (provider, model_id, is_active, input_cost_per_m, output_cost_per_m)
-VALUES ('gemini', 'gemini-1.5-flash', true, 0.0750, 0.3000)
+VALUES ('gemini', 'gemini-flash-latest', true, 0.0750, 0.3000)
 ON CONFLICT DO NOTHING;
 
 -- 2. Analysis Usage Accounting (Minimal metadata: tokens, costs, timestamps)
