@@ -5,6 +5,7 @@ import '../../../app/theme/app_typography.dart';
 import '../../../app/widgets/wrapped_widgets.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../subscriptions/services/subscription_service.dart';
+import '../../chat_import/presentation/export_guide_screen.dart';
 import '../../saved_reports/services/local_report_storage.dart';
 import '../../../services/analytics/analytics_service.dart';
 
@@ -131,12 +132,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  static const String _exportHelp =
-      '1. Open the chat in WhatsApp.\n'
-      '2. Tap ⋮ (top right) › More › Export chat.\n'
-      '3. Choose “Without media”.\n'
-      '4. Pick Chat Wrapped from the share list, or save the file and import it from the Home screen.';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -217,8 +212,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _tile(
               emoji: '\u{1F4E4}',
               title: 'How to export a chat',
-              subtitle: 'From WhatsApp, in 4 taps',
-              onTap: () => _showInfoDialog('How to export a chat', _exportHelp),
+              subtitle: 'Watch the 20-second demo',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ExportGuideScreen()),
+              ),
             ),
             const SizedBox(height: 8),
             _tile(

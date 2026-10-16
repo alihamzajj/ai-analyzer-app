@@ -6,6 +6,7 @@ import '../../../app/theme/app_typography.dart';
 import '../../../app/widgets/motion.dart';
 import '../../../app/widgets/wrapped_widgets.dart';
 import '../../ai_analysis/models/analysis_report.dart';
+import '../../chat_import/presentation/export_guide_screen.dart';
 import '../../chat_import/presentation/import_screen.dart';
 import '../../results/presentation/report_overview_screen.dart';
 import '../../saved_reports/services/local_report_storage.dart';
@@ -85,6 +86,41 @@ class _HomeScreenState extends State<HomeScreen> {
     ).then((_) => _loadSavedReports());
   }
 
+  void _openExportGuide() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ExportGuideScreen()),
+    ).then((_) => _loadSavedReports());
+  }
+
+  /// First-run helper: most new users don't know how to export a chat.
+  Widget _buildGuideBanner() {
+    return WrappedCard(
+      onTap: _openExportGuide,
+      padding: const EdgeInsets.fromLTRB(18, 16, 16, 16),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle),
+            child: const Icon(Icons.play_arrow_rounded, color: AppColors.onAccent, size: 28),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('New here?', style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+                const Text('Watch how to export a WhatsApp chat (20 sec)', style: AppTypography.bodySmall),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+        ],
+      ),
+    );
+  }
+
   void _openSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -137,6 +173,10 @@ class _HomeScreenState extends State<HomeScreen> {
               )),
               const SizedBox(height: 22),
               FadeSlideIn.stagger(2, child: _buildBento(featured, isSample)),
+              if (isSample) ...[
+                const SizedBox(height: 12),
+                FadeSlideIn.stagger(3, child: _buildGuideBanner()),
+              ],
               const SizedBox(height: 28),
               FadeSlideIn.stagger(3, child: _buildDiscoverCarousel()),
               const SizedBox(height: 28),

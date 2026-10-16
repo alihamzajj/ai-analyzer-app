@@ -12,6 +12,7 @@ import '../../chat_parser/models/parse_result.dart';
 import '../../chat_parser/services/chat_parser.dart';
 import '../../chat_parser/services/zip_extractor.dart';
 import '../../chat_setup/presentation/chat_setup_screen.dart';
+import 'export_guide_screen.dart';
 import '../../../services/analytics/analytics_service.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -268,7 +269,17 @@ class _ImportScreenState extends State<ImportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('HOW TO EXPORT', style: AppTypography.labelSmall),
+          Row(
+            children: [
+              const Expanded(child: Text('HOW TO EXPORT', style: AppTypography.labelSmall)),
+              Pressable(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ExportGuideScreen(showImportButton: false)),
+                ),
+                child: const WrappedPill(label: '\u25B6  WATCH DEMO', compact: true),
+              ),
+            ],
+          ),
           const SizedBox(height: 14),
           for (var i = 0; i < steps.length; i++)
             Padding(

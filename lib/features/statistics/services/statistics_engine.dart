@@ -13,7 +13,7 @@ class StatisticsEngine {
     unicode: true,
   );
 
-  static final RegExp _wordTokenRegex = RegExp(r"[a-zA-Z0-9áéíóúÁÉÍÓÚñÑäöüÄÖÜßàâçèêëîïôûù']{3,}");
+  static final RegExp _tokenRegex = RegExp(r"[a-z0-9áéíóúñäöüßàâçèêëîïôûù']+");
 
   static final List<String> _laughMarkers = [
     'haha', 'hehe', 'lol', 'lmao', 'rofl', 'jaja', 'mdr', '😂', '🤣', 'xd', 'hah',
@@ -39,14 +39,17 @@ class StatisticsEngine {
         if (!w.contains(' ')) w: k,
   };
 
-  /// Multi-word keyword phrases ("miss you", "yaad aa", "good night").
-  static final List<(String, String)> _phraseSignals = [
-    for (final k in _trackedKeywords)
-      for (final w in [k, ...?RomanUrdu.keywordSynonyms[k]])
-        if (w.contains(' ')) (w, k),
-  ];
-
-  static final RegExp _signalToken = RegExp(r'[a-z]+');
+  /// Multi-word keyword phrases ("miss you", "yaad aa", "good night"), indexed
+  /// by their first word so a message only checks phrases it could contain.
+  static final Map<String, List<(String, String)>> _phrasesByFirstWord = () {
+    final map = <String, List<(String, String)>>{};
+    for (final k in _trackedKeywords) {
+      for (final w in [k, ...?RomanUrdu.keywordSynonyms[k]]) {
+        if (w.contains(' ')) map.putIfAbsent(w.split(' ').first, () => []).add((w, k));
+      }
+    }
+    return map;
+  }();
 
   /// Runs statistics calculation in a background isolate using Flutter `compute`.
   static Future<ChatStatistics> calculateAsync(List<ParsedMessage> messages) async {
@@ -168,49 +171,49 @@ class StatisticsEngine {
       }
       previousSender = sender;
 
-      // 3. Questions & Laughter
+      // 3-5. One pass over the words: question words, keyword buckets
+      // (English + Roman Urdu), and word counts (3+ letters, no stopwords).
       final lowerText = text.toLowerCase();
       var isQuestion = lowerText.contains('?') || lowerText.contains('¿');
-      final keywordHits = <String>{};
-      for (final m in _signalToken.allMatches(lowerText)) {
-        final token = m.group(0)!;
-        if (!_wordSignals.containsKey(token)) continue;
-        final bucket = _wordSignals[token];
-        if (bucket == null) {
-          isQuestion = true;
-        } else {
-          keywordHits.add(bucket);
+      Set<String>? keywordHits;
+      int msgWords = 0;
+      for (final match in _tokenRegex.allMatches(lowerText)) {
+        final word = match.group(0)!;
+        if (_wordSignals.containsKey(word)) {
+          final bucket = _wordSignals[word];
+          if (bucket == null) {
+            isQuestion = true;
+          } else {
+            (keywordHits ??= {}).add(bucket);
+          }
         }
-      }
-      for (final (phrase, bucket) in _phraseSignals) {
-        if (lowerText.contains(phrase)) keywordHits.add(bucket);
+        final phrases = _phrasesByFirstWord[word];
+        if (phrases != null) {
+          for (final (phrase, bucket) in phrases) {
+            if (lowerText.contains(phrase)) (keywordHits ??= {}).add(bucket);
+          }
+        }
+        if (word.length < 3) continue;
+        msgWords++;
+        if (!Stopwords.allStopwords.contains(word)) {
+          globalWordCounts[word] = (globalWordCounts[word] ?? 0) + 1;
+          participantWordCounts[sender]![word] =
+              (participantWordCounts[sender]![word] ?? 0) + 1;
+        }
       }
       if (isQuestion) {
         questionCounts[sender] = questionCounts[sender]! + 1;
+      }
+      if (keywordHits != null) {
+        for (final keyword in keywordHits) {
+          keywordCounts[sender]![keyword] = keywordCounts[sender]![keyword]! + 1;
+        }
       }
 
       for (final marker in _laughMarkers) {
         if (lowerText.contains(marker)) {
           laughCounts[sender] = laughCounts[sender]! + 1;
           break;
-        }
-      }
-
-      // 4. Keyword counters
-      for (final keyword in keywordHits) {
-        keywordCounts[sender]![keyword] = keywordCounts[sender]![keyword]! + 1;
-      }
-
-      // 5. Tokenize words and count emojis
-      int msgWords = 0;
-      final wordMatches = _wordTokenRegex.allMatches(lowerText);
-      for (final match in wordMatches) {
-        final word = match.group(0)!;
-        msgWords++;
-        if (!Stopwords.isStopword(word)) {
-          globalWordCounts[word] = (globalWordCounts[word] ?? 0) + 1;
-          participantWordCounts[sender]![word] =
-              (participantWordCounts[sender]![word] ?? 0) + 1;
         }
       }
 
