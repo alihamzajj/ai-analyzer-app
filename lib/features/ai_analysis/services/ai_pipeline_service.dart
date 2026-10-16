@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/config/backend_config.dart';
-import '../../../core/utils/anonymous_id.dart';
 import '../../../core/utils/roman_urdu.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../chat_parser/models/parsed_message.dart';
@@ -95,10 +94,11 @@ class AiPipelineService {
 
       if (supabaseClient != null) {
         // Real AI: the Edge Function holds the Gemini key server-side.
+        await _ensureSignedIn(supabaseClient!);
+        // The SDK sends the signed-in user's token; the function rejects anyone else.
         final res = await supabaseClient!.functions.invoke(
           AppConstants.functionAnalyseChat,
           body: requestBody,
-          headers: {'x-anonymous-user-id': await AnonymousId.get()},
         );
         responseData = res.data is String ? jsonDecode(res.data) : Map<String, dynamic>.from(res.data as Map);
       } else if (customBackendUrl != null && customBackendUrl!.isNotEmpty) {
@@ -209,7 +209,7 @@ class AiPipelineService {
       return report;
     } on FunctionException catch (e) {
       throw AiServiceException(
-        _friendlyBackendError(e.status),
+        _serverMessage(e.details) ?? _friendlyBackendError(e.status),
         code: 'BACKEND_STATUS_${e.status}',
         details: e.details,
         isRetryable: e.status != 429,
@@ -217,6 +217,33 @@ class AiPipelineService {
     } catch (e) {
       if (e is AppException) rethrow;
       throw AiServiceException('Failed to generate report: $e', details: e);
+    }
+  }
+
+  /// Every install gets a silent anonymous Supabase user (no email/password),
+  /// so the backend can enforce real per-user limits.
+  static Future<void> _ensureSignedIn(SupabaseClient client) async {
+    if (client.auth.currentSession != null) return;
+    try {
+      await client.auth.signInAnonymously();
+    } catch (e) {
+      throw AiServiceException(
+        'Could not connect to Vibe Check. Check your internet and try again.',
+        code: 'AUTH_FAILED',
+        details: e,
+        isRetryable: true,
+      );
+    }
+  }
+
+  /// Friendly message sent by the function (limits, busy), if present.
+  static String? _serverMessage(dynamic details) {
+    try {
+      final map = details is String ? jsonDecode(details) : details;
+      final msg = (map as Map)['message'];
+      return msg is String && msg.isNotEmpty ? msg : null;
+    } catch (_) {
+      return null;
     }
   }
 

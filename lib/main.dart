@@ -14,6 +14,14 @@ void main() async {
         url: BackendConfig.supabaseUrl,
         publishableKey: BackendConfig.supabaseAnonKey,
       );
+      // Silent per-install login used for fair-use limits; never blocks startup.
+      final auth = Supabase.instance.client.auth;
+      if (auth.currentSession == null) {
+        auth.signInAnonymously().catchError((Object e) {
+          debugPrint('[main] Anonymous sign-in deferred: $e');
+          return AuthResponse();
+        });
+      }
     } catch (e) {
       debugPrint('[main] Supabase init failed, using offline demo AI: $e');
     }

@@ -11,56 +11,84 @@ const AI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("OPENAI_API_KE
 // Optional override, e.g. `supabase secrets set GEMINI_MODEL=gemini-2.5-flash`.
 const GEMINI_MODEL_OVERRIDE = Deno.env.get("GEMINI_MODEL") ?? "";
 
+// Fair-use limits. Override with secrets USER_DAILY_LIMIT / USER_WEEKLY_LIMIT / GLOBAL_DAILY_LIMIT.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const USER_DAILY_LIMIT = Number(Deno.env.get("USER_DAILY_LIMIT") ?? 3);
+const USER_WEEKLY_LIMIT = Number(Deno.env.get("USER_WEEKLY_LIMIT") ?? 10);
+// Keeps the shared free Gemini quota from ever being emptied.
+const GLOBAL_DAILY_LIMIT = Number(Deno.env.get("GLOBAL_DAILY_LIMIT") ?? 300);
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  let reservedUsageId: string | null = null;
+  // A failed analysis shouldn't use up one of the user's reports.
+  const releaseSlot = async () => {
+    if (reservedUsageId) await supabase.from("analysis_usage").delete().eq("id", reservedUsageId);
+    reservedUsageId = null;
+  };
+
   try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1. Identify User (anonymous ID or Auth token)
-    const authHeader = req.headers.get("Authorization");
-    const anonUserIdHeader = req.headers.get("x-anonymous-user-id") || "anon_default";
+    const json = (status: number, payload: unknown) =>
+      new Response(JSON.stringify(payload), {
+        status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
 
-    let userId = anonUserIdHeader;
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) {
-        userId = user.id;
-      }
+    // 1. Require a real signed-in user. The app signs in anonymously at startup,
+    //    so every install has its own Supabase user that can't be faked.
+    const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "").trim();
+    const { data: authData } = token ? await supabase.auth.getUser(token) : { data: { user: null } };
+    const user = authData?.user;
+    if (!user) {
+      return json(401, { error: "AUTH_REQUIRED", message: "Please update the app and try again." });
     }
+    const userId = user.id;
 
     // 2. Parse request body
     const body: AnalysisRequestBody = await req.json();
 
     if (!body.compact_messages || body.compact_messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Missing compact_messages in request." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json(400, { error: "Missing compact_messages in request." });
     }
 
-    // 3. Server-side Rate Limit check (10 deep analyses per week)
-    if (!body.is_teaser_only) {
-      const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const { count, error: countErr } = await supabase
-        .from("analysis_usage")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .gte("created_at", oneWeekAgo);
+    // 3. Fair-use limits, counted in the database (analysis_usage).
+    const now = Date.now();
+    const since = (ms: number) => new Date(now - ms).toISOString();
+    const countSince = async (iso: string, onlyThisUser: boolean) => {
+      let q = supabase.from("analysis_usage").select("id", { count: "exact", head: true }).gte("created_at", iso);
+      if (onlyThisUser) q = q.eq("user_id", userId);
+      const { count } = await q;
+      return count ?? 0;
+    };
 
-      if (!countErr && (count ?? 0) >= 10) {
-        return new Response(
-          JSON.stringify({
-            error: "WEEKLY_LIMIT_EXCEEDED",
-            message: "You have reached your weekly limit of 10 deep AI analyses.",
-          }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    const [userDay, userWeek, everyoneDay] = await Promise.all([
+      countSince(since(DAY_MS), true),
+      countSince(since(7 * DAY_MS), true),
+      countSince(since(DAY_MS), false),
+    ]);
+
+    if (everyoneDay >= GLOBAL_DAILY_LIMIT) {
+      return json(429, { error: "AI_BUSY", message: "Lots of people are checking vibes today. Please try again tomorrow." });
     }
+    if (userDay >= USER_DAILY_LIMIT) {
+      return json(429, { error: "DAILY_LIMIT", message: `You can make ${USER_DAILY_LIMIT} AI reports per day. Come back tomorrow!` });
+    }
+    if (userWeek >= USER_WEEKLY_LIMIT) {
+      return json(429, { error: "WEEKLY_LIMIT", message: `You've used all ${USER_WEEKLY_LIMIT} AI reports for this week.` });
+    }
+
+    // Reserve the slot before calling the AI, so rapid repeat taps are counted too.
+    const { data: usageRow } = await supabase
+      .from("analysis_usage")
+      .insert({ user_id: userId, analysis_type: body.relationship_type ?? "unknown" })
+      .select("id")
+      .single();
+    reservedUsageId = usageRow?.id ?? null;
 
     // 4. Load active model configuration from database
     const { data: modelConfigs } = await supabase
@@ -114,6 +142,7 @@ serve(async (req) => {
       if (!aiResponse) throw new Error("No Gemini model configured.");
 
       if (aiResponse.status === 429 || aiResponse.status === 503) {
+        await releaseSlot();
         // Free-tier quota or burst limit reached: let the app show "try again later".
         return new Response(
           JSON.stringify({ error: "AI_BUSY", message: "The AI is busy right now. Please try again shortly." }),
@@ -171,14 +200,13 @@ serve(async (req) => {
       (outputTokens / 1_000_000) * activeModel.output_cost_per_m).toFixed(5)
     );
 
-    // Record usage in minimal accounting table
-    await supabase.from("analysis_usage").insert({
-      user_id: userId,
-      analysis_type: body.relationship_type,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      cost_usd: costUsd,
-    });
+    // Fill in token counts on the reserved usage row.
+    if (usageRow?.id) {
+      await supabase
+        .from("analysis_usage")
+        .update({ input_tokens: inputTokens, output_tokens: outputTokens, cost_usd: costUsd })
+        .eq("id", usageRow.id);
+    }
 
     const finalResponse: AnalysisResponsePayload = {
       schema_version: 1,
@@ -198,6 +226,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
+    await releaseSlot();
     return new Response(
       JSON.stringify({ error: error.message || "An unexpected error occurred during AI analysis." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
