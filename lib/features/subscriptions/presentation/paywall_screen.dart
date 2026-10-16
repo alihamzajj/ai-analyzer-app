@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_typography.dart';
+import '../../../app/widgets/motion.dart';
+import '../../../app/widgets/wrapped_widgets.dart';
 import '../../chat_parser/models/parse_result.dart';
 import '../../chat_setup/models/chat_setup_config.dart';
 import '../../statistics/models/chat_statistics.dart';
@@ -8,6 +10,8 @@ import '../services/subscription_service.dart';
 import '../../ai_analysis/presentation/ai_generation_screen.dart';
 import '../../../services/analytics/analytics_service.dart';
 
+/// Gate before the AI report. While the store isn't configured the app runs
+/// as a free beta: one clear button, no prices, no confusing dialogs.
 class PaywallScreen extends StatefulWidget {
   final ParseResult parseResult;
   final ChatStatistics statistics;
@@ -29,10 +33,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
   bool _isLoading = false;
   String? _statusMessage;
 
+  bool get _isFreeBeta => !SubscriptionService.isConfigured;
+
   @override
   void initState() {
     super.initState();
-    AnalyticsService.logEvent('paywall_viewed');
+    AnalyticsService.logEvent('paywall_viewed', {'mode': _isFreeBeta ? 'free_beta' : 'store'});
   }
 
   Future<void> _handlePurchase() async {
@@ -52,11 +58,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
         });
         _proceedToAiGeneration();
       } else {
-        // Fallback for development/testing when live Google Play billing is unconfigured
-        _showUnconfiguredStoreDialog();
+        setState(() => _statusMessage = 'Purchase was not completed.');
       }
     } catch (e) {
-      _showUnconfiguredStoreDialog();
+      setState(() => _statusMessage = 'Could not reach Google Play. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -76,36 +81,10 @@ class _PaywallScreenState extends State<PaywallScreen> {
         setState(() => _statusMessage = 'No active subscriptions found for this Google account.');
       }
     } catch (e) {
-      setState(() => _statusMessage = 'Store is running in development mode.');
+      setState(() => _statusMessage = 'Could not reach Google Play. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _showUnconfiguredStoreDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surfaceElevated,
-        title: const Text('Store Mode Notice'),
-        content: const Text(
-          'RevenueCat & Google Play Billing keys are not configured yet. Would you like to proceed with the full AI Analysis in developer preview mode?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _proceedToAiGeneration();
-            },
-            child: const Text('Unlock in Preview Mode'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _proceedToAiGeneration() {
@@ -120,226 +99,204 @@ class _PaywallScreenState extends State<PaywallScreen> {
     );
   }
 
+  /// A real, already-computed fact from the user's chat to tease the report.
+  (String, String) _teaser() {
+    final stats = widget.statistics;
+    final user = widget.config.userParticipantName;
+    final others = stats.participantMessages.keys.where((p) => p != user).toList();
+    final other = others.isNotEmpty ? others.first : 'They';
+    final mine = stats.medianResponseTimeMinutes[user];
+    final theirs = stats.medianResponseTimeMinutes[other];
+    if (others.length == 1 && mine != null && theirs != null && mine > 0 && theirs > 0) {
+      final faster = mine <= theirs ? 'You reply' : '$other replies';
+      return (
+        '$faster faster',
+        'You: ${formatMinutes(mine)} vs $other: ${formatMinutes(theirs)}. But what does it actually mean? The AI reads the vibe.',
+      );
+    }
+    final starters = stats.conversationStarters;
+    final total = starters.values.fold<int>(0, (a, b) => a + b);
+    if (total > 0) {
+      final pct = ((starters[user] ?? 0) * 100 / total).round();
+      return ('You start $pct% of chats', 'Is that effort being matched? The AI checks the messages that matter.');
+    }
+    return (
+      '${formatCount(stats.totalMessages)} messages read',
+      'Your stats are ready. Now let the AI tell you what they mean.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final (teaserTitle, teaserBody) = _teaser();
+
+    final features = [
+      ('\u{1F440}', 'Interest score', 'Who is more into this chat'),
+      ('\u{1F6A9}', 'Red & green flags', 'With the exact messages as receipts'),
+      ('\u{1F498}', 'Compatibility', 'How well your energy matches'),
+      if (widget.config.enableRoast) ('\u{1F525}', 'Roast mode', 'Funny, about texting habits only'),
+      ('\u{1F4F8}', 'Story cards', 'Share to Instagram & WhatsApp'),
+    ];
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Unlock Full Report', style: AppTypography.titleLarge),
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _handleRestore,
-            child: const Text('Restore', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(20),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  // Teaser Insight Card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.cardGlowGradient,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.5)),
+                  CircleIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: 'Back',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                  const Spacer(),
+                  if (_isFreeBeta)
+                    const WrappedPill(label: 'FREE DURING BETA', color: AppColors.secondary)
+                  else
+                    TextButton(
+                      onPressed: _isLoading ? null : _handleRestore,
+                      child: const Text('Restore'),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: AppColors.primaryGradient,
-                              ),
-                              child: const Icon(Icons.flash_on_rounded, size: 18, color: AppColors.onAccent),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text('TEASER INSIGHT', style: AppTypography.labelLarge),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: ListView(
+                  children: [
+                    FadeSlideIn.stagger(
+                      0,
+                      child: Text.rich(
+                        TextSpan(
+                          style: AppTypography.displayLarge.copyWith(fontSize: 38),
+                          children: const [
+                            TextSpan(text: 'Want the\n'),
+                            TextSpan(text: 'full story?', style: TextStyle(color: AppColors.primary)),
                           ],
                         ),
-                        const SizedBox(height: 14),
-                        const Text('Mutual Resonance: 86%', style: AppTypography.titleLarge),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'You two have exceptional conversational momentum. Both initiate conversations with matching enthusiasm.',
-                          style: AppTypography.bodyMedium,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Locked Cards Preview
-                  const Text('Included In Your Full Report:', style: AppTypography.titleMedium),
-                  const SizedBox(height: 12),
-                  _buildLockedFeatureTile(
-                    'Red & Green Flags',
-                    'Evidence-backed moments of connection and friction',
-                    Icons.flag_rounded,
-                    AppColors.accentRed,
-                  ),
-                  _buildLockedFeatureTile(
-                    'Simp Score & Effort Gap',
-                    'Who is investing more emotional energy into texting',
-                    Icons.favorite_rounded,
-                    AppColors.secondary,
-                  ),
-                  _buildLockedFeatureTile(
-                    'Compatibility Score',
-                    'Multi-factor conversational chemistry index',
-                    Icons.auto_awesome_rounded,
-                    AppColors.accentCyan,
-                  ),
-                  _buildLockedFeatureTile(
-                    'Roast Mode (${widget.config.roastIntensity.toUpperCase()})',
-                    'Witty, hilarious breakdown of your texting quirks',
-                    Icons.local_fire_department_rounded,
-                    AppColors.roastAccent,
-                  ),
-                  _buildLockedFeatureTile(
-                    '1080x1920 Story Cards',
-                    'Shareable Wrapped-style cards for Instagram and TikTok',
-                    Icons.share_rounded,
-                    AppColors.accentAmber,
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // Plan Selection Cards
-                  Row(
-                    children: [
-                      // Yearly Option (Best value)
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _isYearlySelected = true),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: _isYearlySelected
-                                  ? AppColors.primary.withValues(alpha: 0.15)
-                                  : AppColors.surfaceCard,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: _isYearlySelected
-                                    ? AppColors.primary
-                                    : AppColors.surfaceBorder,
-                                width: _isYearlySelected ? 2 : 1,
-                              ),
+                    const SizedBox(height: 18),
+                    FadeSlideIn.stagger(
+                      1,
+                      child: WrappedCard(
+                        color: AppColors.secondary,
+                        borderColor: null,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'FROM YOUR CHAT',
+                              style: AppTypography.labelSmall.copyWith(color: AppColors.onAccent),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.accentGreen,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text(
-                                    'SAVE 87%',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                const Text('Yearly Plan', style: AppTypography.titleMedium),
-                                const SizedBox(height: 4),
-                                const Text('\$39.99 / yr', style: AppTypography.titleLarge),
-                                const SizedBox(height: 4),
-                                const Text('\$0.77 / week', style: AppTypography.bodySmall),
-                              ],
+                            const SizedBox(height: 10),
+                            Text(
+                              teaserTitle,
+                              style: AppTypography.displayMedium.copyWith(color: AppColors.onAccent),
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            Text(
+                              teaserBody,
+                              style: AppTypography.bodyLarge.copyWith(color: AppColors.onAccent),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-
-                      // Weekly Option
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _isYearlySelected = false),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: !_isYearlySelected
-                                  ? AppColors.primary.withValues(alpha: 0.15)
-                                  : AppColors.surfaceCard,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: !_isYearlySelected
-                                    ? AppColors.primary
-                                    : AppColors.surfaceBorder,
-                                width: !_isYearlySelected ? 2 : 1,
-                              ),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(height: 20),
-                                Text('Weekly Plan', style: AppTypography.titleMedium),
-                                SizedBox(height: 4),
-                                Text('\$5.99 / wk', style: AppTypography.titleLarge),
-                                SizedBox(height: 4),
-                                Text('Cancel anytime', style: AppTypography.bodySmall),
-                              ],
-                            ),
-                          ),
-                        ),
+                    ),
+                    const SizedBox(height: 22),
+                    FadeSlideIn.stagger(
+                      2,
+                      child: Text(
+                        'Your AI report includes',
+                        style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    for (var i = 0; i < features.length; i++)
+                      FadeSlideIn.stagger(
+                        3 + i,
+                        child: _featureRow(features[i].$1, features[i].$2, features[i].$3),
+                      ),
+                    if (!_isFreeBeta) ...[
+                      const SizedBox(height: 16),
+                      _buildPlans(),
+                    ],
+                    if (_statusMessage != null) ...[
+                      const SizedBox(height: 14),
+                      Text(
+                        _statusMessage!,
+                        textAlign: TextAlign.center,
+                        style: AppTypography.bodyMedium.copyWith(color: AppColors.accentAmber),
                       ),
                     ],
-                  ),
-
-                  if (_statusMessage != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      _statusMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.accentAmber, fontSize: 13),
-                    ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Pulse(
+                maxScale: 1.03,
+                child: ElevatedButton.icon(
+                  onPressed: _isLoading
+                      ? null
+                      : _isFreeBeta
+                          ? _proceedToAiGeneration
+                          : _handlePurchase,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onAccent),
+                        )
+                      : const Icon(Icons.auto_awesome_rounded),
+                  label: Text(
+                    _isFreeBeta
+                        ? 'Get my AI insights'
+                        : _isYearlySelected
+                            ? 'Start 3-day free trial'
+                            : 'Unlock full report',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _isFreeBeta
+                    ? 'Free while we are in beta. Takes about 30 seconds.'
+                    : 'Recurring billing. Cancel anytime in Google Play.',
+                textAlign: TextAlign.center,
+                style: AppTypography.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _featureRow(String emoji, String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: WrappedCard(
+        radius: 20,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700)),
+                  Text(subtitle, style: AppTypography.bodySmall),
                 ],
               ),
             ),
-
-            // Bottom CTA
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceElevated,
-                border: Border(top: BorderSide(color: AppColors.surfaceBorder)),
-              ),
-              child: Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _handlePurchase,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onAccent),
-                          )
-                        : Text(
-                            _isYearlySelected
-                                ? 'Start 3-Day Free Trial'
-                                : 'Unlock Full AI Report',
-                          ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Recurring billing. Cancel anytime in Google Play Store.',
-                    style: AppTypography.bodySmall,
-                  ),
-                ],
-              ),
+            Icon(
+              _isFreeBeta ? Icons.check_circle_rounded : Icons.lock_outline_rounded,
+              size: 20,
+              color: _isFreeBeta ? AppColors.primary : AppColors.textMuted,
             ),
           ],
         ),
@@ -347,32 +304,62 @@ class _PaywallScreenState extends State<PaywallScreen> {
     );
   }
 
-  Widget _buildLockedFeatureTile(String title, String subtitle, IconData icon, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.surfaceBorder),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 14),
-          Expanded(
+  Widget _buildPlans() {
+    Widget plan(bool yearly, String title, String price, String note, String? badge) {
+      final selected = _isYearlySelected == yearly;
+      return Expanded(
+        child: Pressable(
+          onTap: () => setState(() => _isYearlySelected = yearly),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary : AppColors.surfaceCard,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: selected ? AppColors.primary : AppColors.surfaceBorder, width: 1.5),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTypography.labelLarge),
-                const SizedBox(height: 2),
-                Text(subtitle, style: AppTypography.bodySmall),
+                SizedBox(
+                  height: 24,
+                  child: badge == null
+                      ? null
+                      : WrappedPill(
+                          label: badge,
+                          compact: true,
+                          color: selected ? AppColors.onAccent : AppColors.secondary,
+                          textColor: selected ? AppColors.primary : AppColors.onAccent,
+                        ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: AppTypography.labelLarge.copyWith(color: selected ? AppColors.onAccent : AppColors.textPrimary),
+                ),
+                Text(
+                  price,
+                  style: AppTypography.titleLarge.copyWith(color: selected ? AppColors.onAccent : AppColors.textPrimary),
+                ),
+                Text(
+                  note,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: selected ? AppColors.onAccent.withValues(alpha: 0.7) : AppColors.textMuted,
+                  ),
+                ),
               ],
             ),
           ),
-          const Icon(Icons.lock_outline_rounded, size: 18, color: AppColors.textMuted),
-        ],
-      ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        plan(true, 'Yearly', '\$39.99', '\$0.77 / week', 'SAVE 87%'),
+        const SizedBox(width: 10),
+        plan(false, 'Weekly', '\$5.99', 'Cancel anytime', null),
+      ],
     );
   }
 }

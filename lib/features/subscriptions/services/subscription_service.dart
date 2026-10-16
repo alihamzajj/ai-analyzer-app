@@ -24,6 +24,10 @@ class SubscriptionService {
   static bool _isInitialized = false;
   static bool _isConfigured = false;
 
+  /// True once RevenueCat is set up with a real key. Until then the app runs
+  /// as a free beta and the paywall lets everyone straight through.
+  static bool get isConfigured => _isConfigured;
+
   /// Initializes RevenueCat SDK.
   /// If [apiKey] is empty, gracefully marks as unconfigured without crashing.
   static Future<void> initialize({String? apiKey}) async {

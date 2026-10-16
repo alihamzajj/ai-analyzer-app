@@ -67,7 +67,7 @@ class _StatisticsDashboardScreenState extends State<StatisticsDashboardScreen> {
                         onPressed: () => Navigator.of(context).maybePop(),
                       ),
                       const Spacer(),
-                      const WrappedPill(label: 'FREE · ON-DEVICE'),
+                      const WrappedPill(label: 'STEP 3 OF 3'),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -198,7 +198,7 @@ class _StatisticsDashboardScreenState extends State<StatisticsDashboardScreen> {
               child: ElevatedButton.icon(
                 onPressed: _navigateToPaywall,
                 icon: const Icon(Icons.auto_awesome_rounded),
-                label: const Text('Unlock AI Analysis & Roast Deck'),
+                label: const Text('Get my AI insights'),
               ),
             ),
           ],
