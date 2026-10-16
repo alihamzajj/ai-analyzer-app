@@ -8,7 +8,7 @@
 PRODUCT_NAME = ai_chat_analyser
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.veradostudio.vibecheck
+PRODUCT_BUNDLE_IDENTIFIER = com.vibecheck.chat
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 Verado Studio. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Vibe Check. All rights reserved.

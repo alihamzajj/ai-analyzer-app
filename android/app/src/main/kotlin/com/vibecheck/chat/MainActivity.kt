@@ -1,4 +1,4 @@
-package com.veradostudio.vibecheck
+package com.vibecheck.chat
 
 import io.flutter.embedding.android.FlutterActivity
 
