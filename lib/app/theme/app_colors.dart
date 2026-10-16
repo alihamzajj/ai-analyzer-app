@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Centralized color palette for AI Chat Analyser.
+/// Centralized color palette for Vibe Check.
 /// "Chat Wrapped" aesthetic: deep forest-black surfaces with
 /// an electric lime primary and a hot orange secondary.
 class AppColors {

@@ -1,4 +1,4 @@
-package com.aichatanalyser.ai_chat_analyser
+package com.veradostudio.vibecheck
 
 import io.flutter.embedding.android.FlutterActivity
 

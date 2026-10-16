@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('CHAT WRAPPED', style: AppTypography.labelSmall),
+              const Text('VIBE CHECK', style: AppTypography.labelSmall),
               const SizedBox(height: 4),
               Text(
                 'Hey, $userName',

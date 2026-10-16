@@ -236,7 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'How your chats are handled',
               onTap: () => _showInfoDialog(
                 'Privacy Policy',
-                'AI Chat Analyser does not store or sell your conversations.\n\n'
+                'Vibe Check does not store or sell your conversations.\n\n'
                     '1. On-Device Processing: Free chat statistics (message counts, response times, emoji counters) are calculated locally in your device memory.\n\n'
                     '2. AI Pipeline Anonymization: When requesting an AI report, real participant names are replaced with neutral aliases ("User A", "User B").\n\n'
                     '3. Zero Server Retention: Our backend edge functions process conversation digests strictly in memory and discard the data immediately after returning the structured report.\n\n'
@@ -250,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'For entertainment only',
               onTap: () => _showInfoDialog(
                 'Terms of Service',
-                'AI Chat Analyser is an entertainment application designed to explore conversational patterns.\n\n'
+                'Vibe Check is an entertainment application designed to explore conversational patterns.\n\n'
                     'The insights, compatibility metrics, situationship assessments, and roast comments provided by the app are generated for entertainment and curiosity only. They do not constitute formal psychological diagnoses, relationship counseling, or legal advice.',
               ),
             ),
@@ -266,7 +266,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 36),
             Center(
               child: Text(
-                'Chat Wrapped v${AppConstants.appVersion}',
+                '${AppConstants.appName} v${AppConstants.appVersion}',
                 style: AppTypography.labelSmall.copyWith(color: AppColors.textMuted),
               ),
             ),

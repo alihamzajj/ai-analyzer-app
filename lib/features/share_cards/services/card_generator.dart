@@ -44,7 +44,7 @@ class CardGenerator {
       await SharePlus.instance.share(
         ShareParams(
           files: [xFile],
-          text: 'Check out our chat analysis from AI Chat Analyser! 🔥',
+          text: 'We just got our chat vibe-checked 🔥 #VibeCheck',
         ),
       );
     } catch (e) {
@@ -149,7 +149,7 @@ class CardGenerator {
                     ),
                     const SizedBox(width: 16),
                     const Text(
-                      'AI CHAT ANALYSER',
+                      'VIBE CHECK',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
@@ -277,7 +277,7 @@ class CardGenerator {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Wrapped for WhatsApp  •  aichatanalyser.app',
+                      'Get your chat vibe-checked  •  Vibe Check',
                       style: AppTypography.labelLarge.copyWith(
                         fontSize: 22,
                         letterSpacing: 1.2,

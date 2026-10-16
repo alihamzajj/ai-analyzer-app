@@ -1,6 +1,6 @@
-/// Application-wide constants for AI Chat Analyser.
+/// Application-wide constants for Vibe Check.
 class AppConstants {
-  static const String appName = 'AI Chat Analyser';
+  static const String appName = 'Vibe Check';
   static const String appVersion = '1.0.0';
 
   // File & Parsing Limits

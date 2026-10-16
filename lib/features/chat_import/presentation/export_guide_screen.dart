@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_typography.dart';
 import '../../../app/widgets/motion.dart';
+import '../../../app/widgets/vibe_logo.dart';
 import '../../../app/widgets/wrapped_widgets.dart';
 import 'import_screen.dart';
 
@@ -264,8 +265,8 @@ class _ExportGuideScreenState extends State<ExportGuideScreen> {
       const Offset(206, 256),
     ),
     _GuideStep(
-      'Pick Chat Wrapped',
-      'Choose Chat Wrapped in the share list. It opens with your chat ready.',
+      'Pick Vibe Check',
+      'Choose Vibe Check in the share list. It opens with your chat ready.',
       () => const _AndroidChat(overlay: _ShareSheet(ios: false)),
       const Offset(40, 344),
     ),
@@ -297,8 +298,8 @@ class _ExportGuideScreenState extends State<ExportGuideScreen> {
       const Offset(178, 410),
     ),
     _GuideStep(
-      'Pick Chat Wrapped',
-      'Choose Chat Wrapped in the share sheet. It opens with your chat ready.',
+      'Pick Vibe Check',
+      'Choose Vibe Check in the share sheet. It opens with your chat ready.',
       () => const _IosChat(overlay: _ShareSheet(ios: true)),
       const Offset(40, 344),
     ),
@@ -739,7 +740,7 @@ class _ShareSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final apps = [
-      ('Chat\nWrapped', AppColors.primary, true),
+      ('Vibe\nCheck', AppColors.background, true),
       ('Gmail', const Color(0xFFEA4335), false),
       ('Drive', const Color(0xFF34A853), false),
       ('Bluetooth', const Color(0xFF1E88E5), false),
@@ -781,19 +782,22 @@ class _ShareSheet extends StatelessWidget {
                       width: 50,
                       child: Column(
                         children: [
-                          Container(
-                            width: 34,
-                            height: 34,
-                            decoration: BoxDecoration(
-                              color: color,
+                          if (ours)
+                            ClipRRect(
                               borderRadius: BorderRadius.circular(ios ? 9 : 17),
-                              border: ours ? Border.all(color: AppColors.onAccent, width: 2) : null,
+                              child: const VibeLogo(size: 34),
+                            )
+                          else
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: color,
+                                borderRadius: BorderRadius.circular(ios ? 9 : 17),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(label[0], style: _t(12, color: Colors.white, weight: FontWeight.w700)),
                             ),
-                            alignment: Alignment.center,
-                            child: ours
-                                ? const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.onAccent)
-                                : Text(label[0], style: _t(12, color: Colors.white, weight: FontWeight.w700)),
-                          ),
                           const SizedBox(height: 3),
                           Text(
                             label,

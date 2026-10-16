@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_typography.dart';
 import '../../../app/widgets/motion.dart';
+import '../../../app/widgets/vibe_logo.dart';
 import '../../../core/constants/app_constants.dart';
 import 'onboarding_screen.dart';
 import '../../home/presentation/home_screen.dart';
@@ -87,9 +88,15 @@ class _SplashScreenState extends State<SplashScreen> {
               const Spacer(flex: 4),
               FadeSlideIn(
                 delay: const Duration(milliseconds: 1400),
-                child: Text(
-                  'CHAT WRAPPED · PRIVATE BY DESIGN',
-                  style: AppTypography.labelSmall.copyWith(color: AppColors.textMuted),
+                child: Row(
+                  children: [
+                    const VibeLogo(size: 30),
+                    const SizedBox(width: 10),
+                    Text(
+                      'VIBE CHECK · PRIVATE BY DESIGN',
+                      style: AppTypography.labelSmall.copyWith(color: AppColors.textMuted),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),

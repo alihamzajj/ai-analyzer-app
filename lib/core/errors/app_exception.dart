@@ -1,4 +1,4 @@
-/// Base exception class for AI Chat Analyser.
+/// Base exception class for Vibe Check.
 abstract class AppException implements Exception {
   final String message;
   final String? code;

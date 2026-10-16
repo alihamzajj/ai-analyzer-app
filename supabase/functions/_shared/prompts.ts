@@ -15,7 +15,7 @@ function languageInstruction(code: string): string {
 }
 
 export function buildSystemPrompt(req: AnalysisRequestBody): string {
-  return `You are the lead intelligence engine for AI Chat Analyser, an entertaining and insightful mobile app.
+  return `You are the lead intelligence engine for Vibe Check, an entertaining and insightful mobile app.
 Your task is to analyze conversational dynamics based STRICTLY on the provided preprocessed chat messages and statistical summary.
 
 IMPORTANT SAFETY & INTEGRITY RULES:

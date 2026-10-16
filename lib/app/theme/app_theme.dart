@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_typography.dart';
 
-/// Material 3 dark-first theme definition for AI Chat Analyser.
+/// Material 3 dark-first theme definition for Vibe Check.
 class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
