@@ -64,7 +64,8 @@ You MUST respond with a single valid JSON object adhering strictly to this schem
   }
 }
 
-Include 6 to 10 diverse cards relevant to "${req.relationship_type}". Do not duplicate card types.`;
+Include 6 to 10 diverse cards relevant to "${req.relationship_type}". Do not duplicate card types.
+Always include a "green_flags" card (specific positive habits, care, check-ins) and a "red_flags" card (real or lighthearted friction: slow replies, dry texting, ghosting).`;
 }
 
 export function buildUserPrompt(req: AnalysisRequestBody): string {

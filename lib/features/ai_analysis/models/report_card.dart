@@ -49,12 +49,20 @@ class ReportCard {
         'extra_data': extraData,
       };
 
+  static ReportCardType parseType(dynamic raw) {
+    if (raw == null) return ReportCardType.chatWrapped;
+    final str = raw.toString().replaceAll(RegExp(r'[-_\s]'), '').toLowerCase();
+    for (final val in ReportCardType.values) {
+      if (val.name.toLowerCase() == str) {
+        return val;
+      }
+    }
+    return ReportCardType.chatWrapped;
+  }
+
   factory ReportCard.fromJson(Map<String, dynamic> json) {
     return ReportCard(
-      type: ReportCardType.values.firstWhere(
-        (e) => e.name == json['type'],
-        orElse: () => ReportCardType.chatWrapped,
-      ),
+      type: parseType(json['type']),
       title: json['title'] as String? ?? '',
       subtitle: json['subtitle'] as String? ?? '',
       summary: json['summary'] as String? ?? '',

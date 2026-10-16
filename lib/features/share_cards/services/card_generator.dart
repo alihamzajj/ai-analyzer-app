@@ -65,8 +65,21 @@ class CardGenerator {
     required String name2,
   }) {
     final isRoast = card.type == ReportCardType.roastMode;
-    final accent = isRoast ? AppColors.roastAccent : AppColors.primary;
-    final gradient = isRoast ? AppColors.roastGradient : AppColors.primaryGradient;
+    final isRed = card.type == ReportCardType.redFlags;
+    final accent = isRoast
+        ? AppColors.roastAccent
+        : isRed
+            ? const Color(0xFFEF5350)
+            : AppColors.primary;
+    final gradient = isRoast
+        ? AppColors.roastGradient
+        : isRed
+            ? const LinearGradient(
+                colors: [Color(0xFFE53935), Color(0xFFFF7043)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : AppColors.primaryGradient;
 
     return Container(
       width: 1080,

@@ -29,16 +29,24 @@ class StatisticsEngine {
     'good morning',
   ];
 
-  /// Word-boundary matchers per keyword bucket: the English keyword plus its
-  /// Roman Urdu synonyms (e.g. "thanks" also matches "shukriya").
-  static final Map<String, RegExp> _keywordMatchers = {
+  /// Single-word signals looked up per token: keyword bucket (English
+  /// keyword or Roman Urdu synonym, e.g. "shukriya" -> "thanks") or null for
+  /// a Roman Urdu question word. One tokenizer pass replaces per-keyword regexes.
+  static final Map<String, String?> _wordSignals = {
+    for (final q in RomanUrdu.questionWords) q: null,
     for (final k in _trackedKeywords)
-      k: RegExp(
-        r'\b(' +
-            [k, ...?RomanUrdu.keywordSynonyms[k]].map(RegExp.escape).join('|') +
-            r')\b',
-      ),
+      for (final w in [k, ...?RomanUrdu.keywordSynonyms[k]])
+        if (!w.contains(' ')) w: k,
   };
+
+  /// Multi-word keyword phrases ("miss you", "yaad aa", "good night").
+  static final List<(String, String)> _phraseSignals = [
+    for (final k in _trackedKeywords)
+      for (final w in [k, ...?RomanUrdu.keywordSynonyms[k]])
+        if (w.contains(' ')) (w, k),
+  ];
+
+  static final RegExp _signalToken = RegExp(r'[a-z]+');
 
   /// Runs statistics calculation in a background isolate using Flutter `compute`.
   static Future<ChatStatistics> calculateAsync(List<ParsedMessage> messages) async {
@@ -162,9 +170,22 @@ class StatisticsEngine {
 
       // 3. Questions & Laughter
       final lowerText = text.toLowerCase();
-      if (lowerText.contains('?') ||
-          lowerText.contains('¿') ||
-          RomanUrdu.questionPattern.hasMatch(lowerText)) {
+      var isQuestion = lowerText.contains('?') || lowerText.contains('¿');
+      final keywordHits = <String>{};
+      for (final m in _signalToken.allMatches(lowerText)) {
+        final token = m.group(0)!;
+        if (!_wordSignals.containsKey(token)) continue;
+        final bucket = _wordSignals[token];
+        if (bucket == null) {
+          isQuestion = true;
+        } else {
+          keywordHits.add(bucket);
+        }
+      }
+      for (final (phrase, bucket) in _phraseSignals) {
+        if (lowerText.contains(phrase)) keywordHits.add(bucket);
+      }
+      if (isQuestion) {
         questionCounts[sender] = questionCounts[sender]! + 1;
       }
 
@@ -176,10 +197,8 @@ class StatisticsEngine {
       }
 
       // 4. Keyword counters
-      for (final keyword in _trackedKeywords) {
-        if (_keywordMatchers[keyword]!.hasMatch(lowerText)) {
-          keywordCounts[sender]![keyword] = keywordCounts[sender]![keyword]! + 1;
-        }
+      for (final keyword in keywordHits) {
+        keywordCounts[sender]![keyword] = keywordCounts[sender]![keyword]! + 1;
       }
 
       // 5. Tokenize words and count emojis

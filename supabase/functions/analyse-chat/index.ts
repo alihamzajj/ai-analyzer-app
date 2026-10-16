@@ -87,24 +87,33 @@ serve(async (req) => {
     let outputTokens = 1200;
 
     if (AI_API_KEY) {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel.model_id}:generateContent?key=${AI_API_KEY}`;
-      const aiResponse = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.7,
-            // Room for 6-10 cards plus the model's internal reasoning tokens.
-            maxOutputTokens: 8192,
-          },
-        }),
+      const requestPayload = JSON.stringify({
+        contents: [
+          { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.7,
+          // Room for 6-10 cards plus the model's internal reasoning tokens.
+          maxOutputTokens: 8192,
+        },
       });
 
-      if (aiResponse.status === 429) {
+      // Google retires model names over time; fall through to the always-current aliases.
+      const candidateModels = [...new Set([activeModel.model_id, "gemini-flash-latest", "gemini-flash-lite-latest"])];
+      let aiResponse: Response | null = null;
+      for (const modelId of candidateModels) {
+        aiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${AI_API_KEY}`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: requestPayload },
+        );
+        // 404 = retired model name, 500/503 = Google overloaded: try the next model.
+        if (![404, 500, 503].includes(aiResponse.status)) break;
+        await aiResponse.body?.cancel();
+      }
+      if (!aiResponse) throw new Error("No Gemini model configured.");
+
+      if (aiResponse.status === 429 || aiResponse.status === 503) {
         // Free-tier quota or burst limit reached: let the app show "try again later".
         return new Response(
           JSON.stringify({ error: "AI_BUSY", message: "The AI is busy right now. Please try again shortly." }),

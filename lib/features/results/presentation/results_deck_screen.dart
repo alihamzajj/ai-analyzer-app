@@ -269,10 +269,11 @@ class _ResultsDeckScreenState extends State<ResultsDeckScreen> {
     ReportCardType.whosTheProblem: '\u{1F575}\u{FE0F}',
   };
 
-  /// Card fill: semantic for some types, otherwise cycles lime / dark / orange.
+  /// Card fill: semantic for specific types, otherwise cycles lime / dark / orange.
   static (Color, Color, Color) _palette(ReportCard card, int index) {
     const lime = (AppColors.primary, AppColors.onAccent, Color(0xB30A1410));
     const orange = (AppColors.secondary, AppColors.onAccent, Color(0xB30A1410));
+    const red = (Color(0xFFE53935), Colors.white, Color(0xCCFFFFFF));
     const dark = (
       AppColors.surfaceElevated,
       AppColors.textPrimary,
@@ -280,8 +281,9 @@ class _ResultsDeckScreenState extends State<ResultsDeckScreen> {
     );
     switch (card.type) {
       case ReportCardType.roastMode:
-      case ReportCardType.redFlags:
         return orange;
+      case ReportCardType.redFlags:
+        return red;
       case ReportCardType.greenFlags:
         return lime;
       default:
@@ -289,13 +291,43 @@ class _ResultsDeckScreenState extends State<ResultsDeckScreen> {
     }
   }
 
-  static String _typeLabel(ReportCardType t) => t.name
-      .replaceAllMapped(RegExp(r'([A-Z])'), (m) => ' ${m[1]}')
-      .toUpperCase();
+  static String _typeLabel(ReportCardType t) {
+    switch (t) {
+      case ReportCardType.greenFlags:
+        return 'GREEN FLAGS';
+      case ReportCardType.redFlags:
+        return 'RED FLAGS';
+      case ReportCardType.roastMode:
+        return 'ROAST MODE';
+      case ReportCardType.simpScore:
+        return 'SIMP SCORE';
+      case ReportCardType.interestMeter:
+        return 'INTEREST METER';
+      case ReportCardType.situationshipStatus:
+        return 'SITUATIONSHIP STATUS';
+      case ReportCardType.compatibilityScore:
+        return 'COMPATIBILITY SCORE';
+      case ReportCardType.doubleTextChampion:
+        return 'DOUBLE-TEXT CHAMPION';
+      case ReportCardType.dryTexterDetector:
+        return 'DRY TEXTER DETECTOR';
+      case ReportCardType.effortGap:
+        return 'EFFORT GAP';
+      case ReportCardType.textingPersonality:
+        return 'TEXTING PERSONALITY';
+      case ReportCardType.groupRoles:
+        return 'GROUP ROLES';
+      case ReportCardType.whosTheProblem:
+        return 'WHO\'S THE PROBLEM';
+      case ReportCardType.chatWrapped:
+        return 'CHAT WRAPPED';
+    }
+  }
 
   Widget _buildReportCardView(ReportCard card, int index) {
     final (bg, ink, muted) = _palette(card, index);
     final isDark = bg == AppColors.surfaceElevated;
+    final emoji = _emoji[card.type] ?? '✨';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 6),
@@ -324,23 +356,25 @@ class _ResultsDeckScreenState extends State<ResultsDeckScreen> {
                             _typeLabel(card.type),
                             style: AppTypography.labelSmall.copyWith(
                               color: ink,
+                              letterSpacing: 1.5,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        if (card.score != null)
-                          Text(
-                            _emoji[card.type] ?? '✨',
-                            style: const TextStyle(fontSize: 34),
-                          ),
+                        Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 32),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 18),
                     FadeSlideIn(
                       child: Text(
                         card.title,
                         style: AppTypography.displayLarge.copyWith(
                           color: ink,
-                          fontSize: 40,
+                          fontSize: 36,
+                          height: 1.15,
                         ),
                       ),
                     ),
@@ -350,31 +384,33 @@ class _ResultsDeckScreenState extends State<ResultsDeckScreen> {
                       child: Text(
                         card.subtitle,
                         style: AppTypography.titleLarge.copyWith(
-                          color: isDark ? AppColors.primary : ink,
-                          fontWeight: FontWeight.w500,
+                          color: isDark ? AppColors.primary : ink.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 20,
                         ),
                       ),
                     ),
                     if (card.score != null) ...[
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 20),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.baseline,
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           CountUp(
                             value: card.score!,
-                            style: AppTypography.number(size: 120, color: ink),
+                            style: AppTypography.number(size: 96, color: ink),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             '/100',
                             style: AppTypography.titleLarge.copyWith(
                               color: muted,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: TweenAnimationBuilder<double>(
@@ -383,39 +419,70 @@ class _ResultsDeckScreenState extends State<ResultsDeckScreen> {
                           curve: Curves.easeOutCubic,
                           builder: (context, v, _) => LinearProgressIndicator(
                             value: v,
-                            minHeight: 12,
+                            minHeight: 10,
                             color: isDark ? AppColors.primary : ink,
                             backgroundColor: ink.withValues(alpha: 0.15),
                           ),
                         ),
                       ),
+                    ] else ...[
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: ink.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: ink.withValues(alpha: 0.18)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(emoji, style: const TextStyle(fontSize: 22)),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                card.type == ReportCardType.greenFlags
+                                    ? 'Healthy Strengths Detected'
+                                    : card.type == ReportCardType.redFlags
+                                        ? 'Caution & Communication Patterns'
+                                        : 'Key Conversation Dynamics',
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: ink,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                    if (card.score == null) ...[
-                      const Spacer(),
-                      Center(
-                        child: Floating(
-                          amplitude: 8,
-                          child: Text(
-                            _emoji[card.type] ?? '✨',
-                            style: const TextStyle(fontSize: 110),
+                    const SizedBox(height: 22),
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 160),
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppColors.surfaceElevated.withValues(alpha: 0.6)
+                              : ink.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: ink.withValues(alpha: 0.14),
+                          ),
+                        ),
+                        child: Text(
+                          card.summary,
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: ink,
+                            fontSize: 17,
+                            height: 1.5,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ),
-                    ],
-                    const Spacer(),
-                    const SizedBox(height: 26),
-                    FadeSlideIn(
-                      delay: const Duration(milliseconds: 160),
-                      child: Text(
-                        card.summary,
-                        style: AppTypography.bodyLarge.copyWith(
-                          color: ink,
-                          fontSize: 18,
-                          height: 1.5,
-                        ),
-                      ),
                     ),
-                    const SizedBox(height: 22),
+                    const Spacer(),
+                    const SizedBox(height: 18),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,

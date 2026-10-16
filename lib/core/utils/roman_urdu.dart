@@ -39,6 +39,12 @@ class RomanUrdu {
   };
 
   /// Question words. Roman Urdu questions are often sent without a "?".
+  static const Set<String> questionWords = {
+    'kya', 'kia', 'kyun', 'kyu', 'kyon', 'kab', 'kahan', 'kaha', 'kidhar', 'kaise',
+    'kese', 'kesy', 'kaisi', 'kesi', 'kon', 'kaun', 'konsa', 'kitna', 'kitni', 'kitne',
+  };
+
+  /// Regex form of [questionWords].
   static final RegExp questionPattern = RegExp(
     r'\b(kya|kia|kyun|kyu|kyon|kab|kahan|kaha|kidhar|kaise|kese|kesy|kaisi|kesi|kon|kaun|konsa|kitna|kitni|kitne)\b',
   );

@@ -24,7 +24,8 @@ class AppConstants {
   static const String keyAnonymousUserId = 'anonymous_user_id';
 
   // Backend Function Names
-  static const String functionAnalyseChat = 'analyse-chat';
+  // Deployed from the dashboard, which assigned this slug.
+  static const String functionAnalyseChat = 'bright-worker';
 
   // Relationship Types
   static const List<String> relationshipTypes = [

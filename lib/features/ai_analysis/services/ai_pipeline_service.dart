@@ -94,18 +94,13 @@ class AiPipelineService {
       Map<String, dynamic> responseData;
 
       if (supabaseClient != null) {
+        // Real AI: the Edge Function holds the Gemini key server-side.
         final res = await supabaseClient!.functions.invoke(
           AppConstants.functionAnalyseChat,
           body: requestBody,
           headers: {'x-anonymous-user-id': await AnonymousId.get()},
         );
-        if (res.status != 200) {
-          throw AiServiceException(
-            'Backend returned status ${res.status}: ${res.data}',
-            code: 'BACKEND_STATUS_${res.status}',
-          );
-        }
-        responseData = res.data is String ? jsonDecode(res.data) : res.data;
+        responseData = res.data is String ? jsonDecode(res.data) : Map<String, dynamic>.from(res.data as Map);
       } else if (customBackendUrl != null && customBackendUrl!.isNotEmpty) {
         final url = Uri.parse(customBackendUrl!);
         final res = await http.post(
